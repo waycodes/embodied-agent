@@ -1,0 +1,44 @@
+# Default EmbodiedDataKit configuration
+
+# Execution settings
+workers: 1
+seed: 42
+resume: false
+
+# Validation settings
+validation:
+  fail_fast: false
+  fail_on_warn: false
+  quarantine: false
+  strict: false
+  min_episode_length: 1
+  max_episode_length: 100000
+  action_bounds:
+    - -10.0
+    - 10.0
+  action_sigma_threshold: 5.0
+  timestamp_gap_factor: 2.0
+
+# Sharding settings
+sharding:
+  episodes_per_parquet_shard: 1000
+  max_video_frames_per_shard: 10000
+  video_crf: 23
+  video_preset: medium
+
+# Transform settings
+transform:
+  camera: null  # Auto-select canonical camera
+  camera_fallback_order:
+    - front
+    - workspace
+    - overhead
+    - wrist
+  resolution:
+    - 256
+    - 256
+  action_mapping: passthrough
+  normalize_actions: false
+  flatten_keys: true
+  add_episode_ids: true
+  mark_invalid: true
