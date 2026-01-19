@@ -1,0 +1,51 @@
+# Example pipeline configuration for OXE compilation
+
+# Execution settings
+workers: 4
+seed: 42
+
+# Output configuration
+# output_dir: ./output  # Set via CLI
+
+# Validation settings
+validation:
+  fail_fast: false
+  quarantine: true
+  strict: false
+
+# Sharding settings
+sharding:
+  episodes_per_parquet_shard: 500
+  max_video_frames_per_shard: 5000
+  video_crf: 20
+  video_preset: fast
+
+# Transform settings
+transform:
+  camera: front
+  camera_fallback_order:
+    - front
+    - cam_high
+    - workspace
+    - overhead
+  resolution:
+    - 256
+    - 256
+  action_mapping: ee7
+  normalize_actions: true
+
+# Dataset-specific overrides
+dataset_overrides:
+  berkeley_autolab_ur5:
+    transform:
+      camera: cam_high
+      resolution:
+        - 224
+        - 224
+
+  bridge:
+    transform:
+      camera: image_4
+      camera_fallback_order:
+        - image_4
+        - image_0
