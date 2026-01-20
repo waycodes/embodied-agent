@@ -178,3 +178,64 @@ class TestValidationPipeline:
         # Synthetic data should pass all validators
         errors = [f for f in total_findings if f.severity.value == "ERROR"]
         assert len(errors) == 0, f"Unexpected errors: {[f.message for f in errors]}"
+
+
+class TestRoundTrip:
+    """Round-trip integration tests for write then read."""
+
+    def test_write_read_episodes_parquet(self) -> None:
+        """Test writing and reading episodes metadata."""
+        from embodied_datakit.artifacts import ArtifactLayout
+        from embodied_datakit.writers import EpisodesTableWriter
+
+        episodes, spec = generate_synthetic_dataset(num_episodes=3, steps_per_episode=5)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            layout = ArtifactLayout(tmpdir)
+            layout.create_dirs()
+
+            writer = EpisodesTableWriter(layout.episodes_index_path)
+
+            for i, episode in enumerate(episodes):
+                writer.add_episode(
+                    episode=episode,
+                    spec=spec,
+                    parquet_file=f"chunk-000/episode_{i:06d}.parquet",
+                    parquet_row_start=i * 5,
+                    parquet_row_end=(i + 1) * 5,
+                )
+
+            writer.write()
+
+            # Read back and verify
+            table = pq.read_table(layout.episodes_index_path)
+            assert len(table) == 3
+
+            # Verify fields
+            assert "episode_id" in table.column_names
+            assert "num_steps" in table.column_names
+            assert "parquet_row_start" in table.column_names
+
+            # Verify values
+            rows = table.to_pydict()
+            assert rows["num_steps"] == [5, 5, 5]
+            assert rows["parquet_row_start"] == [0, 5, 10]
+
+    def test_artifact_layout_structure(self) -> None:
+        """Test artifact layout creates correct structure."""
+        from embodied_datakit.artifacts import ArtifactLayout
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            layout = ArtifactLayout(tmpdir)
+            layout.create_dirs()
+
+            # Verify directories exist
+            assert layout.meta_dir.exists()
+            assert layout.data_dir.exists()
+            assert layout.videos_dir.exists()
+            assert layout.reports_dir.exists()
+            assert layout.logs_dir.exists()
+
+            # Verify path methods
+            assert layout.info_path == layout.meta_dir / "info.json"
+            assert layout.tasks_path == layout.meta_dir / "tasks.jsonl"
