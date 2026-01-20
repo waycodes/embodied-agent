@@ -15,9 +15,16 @@ from embodied_datakit.schema.keys import (
     unflatten_dict,
 )
 from embodied_datakit.schema.spec import DatasetSpec, FeatureSpec
-from embodied_datakit.schema.stats import DatasetStats, FeatureStats
+from embodied_datakit.schema.stats import DatasetStats, FeatureStats, StatsAccumulator
 from embodied_datakit.schema.step import Step
 from embodied_datakit.schema.tasks import TaskCatalog
+from embodied_datakit.schema.versioning import (
+    CURRENT_SCHEMA_VERSION,
+    Version,
+    can_read,
+    check_compatibility,
+    get_current_version,
+)
 
 __all__ = [
     "Step",
@@ -28,6 +35,7 @@ __all__ = [
     "EpisodeIndexRecord",
     "FeatureStats",
     "DatasetStats",
+    "StatsAccumulator",
     "ActionType",
     "ActionMetadata",
     "KEY_SEP",
@@ -39,4 +47,9 @@ __all__ = [
     "get_camera_name",
     "make_image_key",
     "make_depth_key",
+    "CURRENT_SCHEMA_VERSION",
+    "Version",
+    "can_read",
+    "check_compatibility",
+    "get_current_version",
 ]
