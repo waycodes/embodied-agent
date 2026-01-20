@@ -11,6 +11,7 @@ from embodied_datakit.validators.structural import (
     ActionSanityValidator,
     EpisodeLengthValidator,
     RLDSInvariantValidator,
+    SchemaValidator,
     TimestampValidator,
 )
 
@@ -24,4 +25,5 @@ __all__ = [
     "EpisodeLengthValidator",
     "TimestampValidator",
     "ActionSanityValidator",
+    "SchemaValidator",
 ]
