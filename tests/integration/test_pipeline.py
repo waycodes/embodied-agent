@@ -239,3 +239,75 @@ class TestRoundTrip:
             # Verify path methods
             assert layout.info_path == layout.meta_dir / "info.json"
             assert layout.tasks_path == layout.meta_dir / "tasks.jsonl"
+
+
+class TestIngestionSmoke:
+    """Smoke tests for ingestion pipeline."""
+
+    def test_single_episode_ingestion(self) -> None:
+        """Test ingesting a single episode from synthetic data."""
+        episodes, spec = generate_synthetic_dataset(num_episodes=1, steps_per_episode=10)
+        episode = episodes[0]
+
+        # Verify episode structure
+        assert episode.episode_id is not None
+        assert len(episode.steps) == 10
+        assert episode.steps[0].is_first
+        assert episode.steps[-1].is_last
+
+        # Verify step iteration
+        step_count = 0
+        for step in episode.iter_steps():
+            assert step.observation is not None
+            step_count += 1
+        assert step_count == 10
+
+    def test_streaming_safety(self) -> None:
+        """Test that episodes can be processed in streaming fashion."""
+        episodes, spec = generate_synthetic_dataset(num_episodes=5, steps_per_episode=10)
+
+        # Simulate streaming processing
+        processed_ids = []
+        for episode in episodes:
+            # Process episode
+            assert episode.num_steps > 0
+            assert episode.episode_id not in processed_ids
+            processed_ids.append(episode.episode_id)
+
+            # Verify we can access all steps
+            for step in episode.steps:
+                assert step.observation is not None
+
+        assert len(processed_ids) == 5
+
+    def test_episode_observations_non_empty(self) -> None:
+        """Test that observations are non-empty."""
+        episodes, spec = generate_synthetic_dataset(num_episodes=1, steps_per_episode=5)
+        episode = episodes[0]
+
+        for step in episode.steps:
+            # Should have at least one observation key
+            assert len(step.observation) > 0
+
+            # Check image observations exist
+            image_keys = [k for k in step.observation if k.startswith("observation.images.")]
+            assert len(image_keys) > 0
+
+            # Check images are valid arrays
+            for key in image_keys:
+                img = step.observation[key]
+                assert isinstance(img, np.ndarray)
+                assert img.ndim == 3  # H, W, C
+                assert img.shape[2] == 3  # RGB
+
+    def test_action_validity(self) -> None:
+        """Test that actions are valid for non-terminal steps."""
+        episodes, spec = generate_synthetic_dataset(num_episodes=1, steps_per_episode=5)
+        episode = episodes[0]
+
+        for i, step in enumerate(episode.steps):
+            if not step.is_last:
+                # Non-last steps should have valid actions
+                assert step.action is not None
+                assert isinstance(step.action, np.ndarray)
+                assert step.action.ndim == 1
