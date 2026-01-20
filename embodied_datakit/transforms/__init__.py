@@ -16,6 +16,10 @@ from embodied_datakit.transforms.pipeline import (
     register_transform,
 )
 from embodied_datakit.transforms.task import TaskTextTransform, normalize_task_text
+from embodied_datakit.transforms.timestamp import (
+    ResampleTransform,
+    TimestampCanonicalizeTransform,
+)
 
 __all__ = [
     "Transform",
@@ -29,6 +33,8 @@ __all__ = [
     "MapActionSpaceTransform",
     "TaskTextTransform",
     "normalize_task_text",
+    "TimestampCanonicalizeTransform",
+    "ResampleTransform",
     "TRANSFORM_REGISTRY",
     "build_transform",
     "load_pipeline_config",
