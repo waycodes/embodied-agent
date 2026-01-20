@@ -1,0 +1,31 @@
+{
+  "description": "Beads-aware agent for AI-supervised issue tracking workflows",
+  "tools": ["@builtin"],
+  "allowedTools": [
+    "fs_read",
+    "fs_write",
+    "execute_bash",
+    "grep",
+    "glob",
+    "code"
+  ],
+  "toolsSettings": {
+    "execute_bash": {
+      "allowedCommands": [
+        "bd .*",
+        "git .*"
+      ],
+      "autoAllowReadonly": true
+    }
+  },
+  "resources": [
+    "file://AGENTS.md",
+    "file://.beads/README.md"
+  ],
+  "hooks": [
+    {
+      "type": "agentSpawn",
+      "command": ".kiro/hooks/beads-context.sh"
+    }
+  ]
+}

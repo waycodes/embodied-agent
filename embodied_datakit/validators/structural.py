@@ -36,7 +36,7 @@ class RLDSInvariantValidator(BaseValidator):
 
         if not episode.steps:
             findings.append(Finding(
-                validator=self.name,
+                code=self.name,
                 severity=Severity.ERROR,
                 message="Episode has no steps",
                 episode_id=episode.episode_id,
@@ -47,7 +47,7 @@ class RLDSInvariantValidator(BaseValidator):
         first_step = episode.steps[0]
         if not first_step.is_first:
             findings.append(Finding(
-                validator=self.name,
+                code=self.name,
                 severity=Severity.ERROR,
                 message="First step must have is_first=True",
                 episode_id=episode.episode_id,
@@ -58,7 +58,7 @@ class RLDSInvariantValidator(BaseValidator):
         last_step = episode.steps[-1]
         if not last_step.is_last:
             findings.append(Finding(
-                validator=self.name,
+                code=self.name,
                 severity=Severity.ERROR,
                 message="Last step must have is_last=True",
                 episode_id=episode.episode_id,
@@ -67,7 +67,7 @@ class RLDSInvariantValidator(BaseValidator):
 
         if last_step.action is not None:
             findings.append(Finding(
-                validator=self.name,
+                code=self.name,
                 severity=Severity.WARN,
                 message="Last step should have action=None (RLDS convention)",
                 episode_id=episode.episode_id,
@@ -78,7 +78,7 @@ class RLDSInvariantValidator(BaseValidator):
         for i, step in enumerate(episode.steps[1:-1], start=1):
             if step.is_first:
                 findings.append(Finding(
-                    validator=self.name,
+                    code=self.name,
                     severity=Severity.ERROR,
                     message="Only first step should have is_first=True",
                     episode_id=episode.episode_id,
@@ -86,7 +86,7 @@ class RLDSInvariantValidator(BaseValidator):
                 ))
             if step.is_last:
                 findings.append(Finding(
-                    validator=self.name,
+                    code=self.name,
                     severity=Severity.ERROR,
                     message="Only last step should have is_last=True",
                     episode_id=episode.episode_id,
@@ -97,7 +97,7 @@ class RLDSInvariantValidator(BaseValidator):
         for i, step in enumerate(episode.steps):
             if step.is_terminal and not step.is_last:
                 findings.append(Finding(
-                    validator=self.name,
+                    code=self.name,
                     severity=Severity.WARN,
                     message="Terminal step is not marked as last",
                     episode_id=episode.episode_id,
@@ -135,7 +135,7 @@ class EpisodeLengthValidator(BaseValidator):
 
         if num_steps < self.min_length:
             findings.append(Finding(
-                validator=self.name,
+                code=self.name,
                 severity=Severity.ERROR,
                 message=f"Episode too short: {num_steps} < {self.min_length}",
                 episode_id=episode.episode_id,
@@ -143,7 +143,7 @@ class EpisodeLengthValidator(BaseValidator):
 
         if num_steps > self.max_length:
             findings.append(Finding(
-                validator=self.name,
+                code=self.name,
                 severity=Severity.WARN,
                 message=f"Episode very long: {num_steps} > {self.max_length}",
                 episode_id=episode.episode_id,
@@ -191,7 +191,7 @@ class TimestampValidator(BaseValidator):
             # Check monotonicity
             if curr_ts < prev_ts:
                 findings.append(Finding(
-                    validator=self.name,
+                    code=self.name,
                     severity=Severity.ERROR,
                     message=f"Non-monotonic timestamp: {curr_ts} < {prev_ts}",
                     episode_id=episode.episode_id,
@@ -202,7 +202,7 @@ class TimestampValidator(BaseValidator):
             gap = curr_ts - prev_ts
             if gap > max_gap:
                 findings.append(Finding(
-                    validator=self.name,
+                    code=self.name,
                     severity=Severity.WARN,
                     message=f"Large timestamp gap: {gap:.3f}s (expected ~{expected_interval:.3f}s)",
                     episode_id=episode.episode_id,
@@ -256,7 +256,7 @@ class ActionSanityValidator(BaseValidator):
 
             if np.any(step.action < min_val) or np.any(step.action > max_val):
                 findings.append(Finding(
-                    validator=self.name,
+                    code=self.name,
                     severity=Severity.WARN,
                     message=f"Action out of bounds [{min_val}, {max_val}]",
                     episode_id=episode.episode_id,
@@ -267,7 +267,7 @@ class ActionSanityValidator(BaseValidator):
         # Check for NaN/Inf
         if np.any(~np.isfinite(actions_arr)):
             findings.append(Finding(
-                validator=self.name,
+                code=self.name,
                 severity=Severity.ERROR,
                 message="Action contains NaN or Inf",
                 episode_id=episode.episode_id,
@@ -285,7 +285,7 @@ class ActionSanityValidator(BaseValidator):
             z_score = np.abs((step.action - mean) / std)
             if np.any(z_score > self.sigma_threshold):
                 findings.append(Finding(
-                    validator=self.name,
+                    code=self.name,
                     severity=Severity.WARN,
                     message=f"Action outlier detected (z > {self.sigma_threshold})",
                     episode_id=episode.episode_id,

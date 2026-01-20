@@ -1,0 +1,792 @@
+version: 1
+meta:
+  project: EmbodiedDataKit
+  repo_name: embodied_datakit
+  # Beads supports hierarchical IDs like parent.N (max depth enforced in Beads). Keep depth <= 2 here. :contentReference[oaicite:2]{index=2}
+  id_prefix: "bd"               # seeder generates ids like bd-<6hex>, then children bd-<id>.1, .2, ...
+  created_by: "seed-script"
+  default_priority: 2           # matches Beads defaulting behavior if omitted; we set explicitly anyway. :contentReference[oaicite:3]{index=3}
+labels:
+  project: ["proj:embodied_datakit"]
+  phases:
+    - "phase:00_bootstrap"
+    - "phase:01_spec"
+    - "phase:02_schema"
+    - "phase:03_pipeline"
+    - "phase:04_rlds_ingest"
+    - "phase:05_lerobot_ingest"
+    - "phase:06_transforms"
+    - "phase:07_validation"
+    - "phase:08_writer_lerobot_v3"
+    - "phase:09_export_rlds"
+    - "phase:10_index_slice"
+    - "phase:11_train_utils"
+    - "phase:12_eval_rlbench"
+    - "phase:13_tooling"
+    - "phase:14_tests_release"
+  areas:
+    - "area:repo"
+    - "area:spec"
+    - "area:schema"
+    - "area:pipeline"
+    - "area:adapters"
+    - "area:transforms"
+    - "area:validation"
+    - "area:writer"
+    - "area:export"
+    - "area:index"
+    - "area:training"
+    - "area:eval"
+    - "area:tooling"
+    - "area:docs"
+    - "area:qa"
+
+issues:
+  # ------------------------------
+  # PINNED CONTEXT (non-work item)
+  # ------------------------------
+  - key: CTX
+    title: "EmbodiedDataKit: North Star, invariants, and non-goals"
+    issue_type: "task"
+    status: "pinned"         # Beads supports a pinned status for persistent context. :contentReference[oaicite:4]{index=4}
+    priority: 1
+    labels: ["proj:embodied_datakit", "area:spec"]
+    description: |
+      North Star:
+      - Compile heterogeneous embodied trajectories (RLDS/TFDS, LeRobot v3, OXE-like) into a streamable dataset
+        with strict validation and sliceable metadata.
+      - Enable cross-embodiment training and RLBench-style evaluation.
+
+      Invariants:
+      - All conversions are reproducible (config + provenance hash).
+      - Validation is strict, noisy, and produces machine-readable reports.
+      - Output supports efficient streaming reads (favor fewer, larger shard files).
+    acceptance_criteria: |
+      - This issue stays pinned and is updated whenever project scope shifts.
+      - All epics reference these invariants in their design sections.
+
+  # ------------------------------
+  # EPIC 00: BOOTSTRAP
+  # ------------------------------
+  - key: EP00
+    title: "EPIC: Bootstrap repo + Beads hygiene"
+    issue_type: "epic"
+    priority: 0
+    labels: ["proj:embodied_datakit", "phase:00_bootstrap", "area:repo"]
+    description: "Set up repository scaffolding, CI, config, and Beads operational conventions."
+    acceptance_criteria: |
+      - Repo is installable (editable install) with dev extras.
+      - CI runs lint, type checks, and a tiny integration test.
+      - Beads config and agent instructions are in place.
+    deps:
+      - type: "related"
+        on: ["CTX"]
+    children:
+      - key: EP00_T1
+        title: "Initialize Beads in repo and commit .beads/"
+        issue_type: "task"
+        priority: 0
+        labels: ["phase:00_bootstrap", "area:repo"]
+        description: |
+          Run `bd init` once; ensure .beads exists and is committed for agent workflows.
+          Beads stores issues as JSONL under .beads/ and supports `bd ready` for unblocked work. :contentReference[oaicite:5]{index=5}
+        acceptance_criteria: |
+          - `.beads/` exists in repo and is tracked.
+          - `bd info` and `bd ready` work locally.
+      - key: EP00_T2
+        title: "Add .beads/config.yaml defaults (json output, sync branch, daemon policy)"
+        issue_type: "task"
+        priority: 0
+        labels: ["phase:00_bootstrap", "area:repo"]
+        description: |
+          Create `.beads/config.yaml` with sane defaults:
+          - default json output for scripting (config supports `json: true`). :contentReference[oaicite:6]{index=6}
+          - configure sync branch (common warning fix suggests `sync-branch: beads-sync`). :contentReference[oaicite:7]{index=7}
+          - disable daemon if preferred for single-user workflows (config example mentions no-daemon). :contentReference[oaicite:8]{index=8}
+        acceptance_criteria: |
+          - `.beads/config.yaml` committed.
+          - `bd config list --json` reflects expected values.
+      - key: EP00_T3
+        title: "Create AGENTS.md instructions for using bd (ready/sync discipline)"
+        issue_type: "task"
+        priority: 0
+        labels: ["phase:00_bootstrap", "area:repo"]
+        description: |
+          Add a short section telling agents to:
+          - use `bd ready --json` to pick work
+          - update status while working
+          - run `bd sync` before ending sessions (agent workflow best practice). :contentReference[oaicite:9]{index=9}
+        acceptance_criteria: |
+          - AGENTS.md exists and references bd commands.
+      - key: EP00_T4
+        title: "Repo skeleton + packaging + extras (tfds/video/rlbench/dev)"
+        issue_type: "task"
+        priority: 0
+        labels: ["phase:00_bootstrap", "area:repo"]
+        description: |
+          Create python package structure: embodied_datakit/{adapters,transforms,validators,writers,index,training,eval}.
+          Add pyproject extras: edk[tfds], edk[video], edk[rlbench], edk[dev].
+        acceptance_criteria: |
+          - `pip install -e .[dev]` succeeds.
+          - Import `embodied_datakit` succeeds.
+      - key: EP00_T5
+        title: "Tooling gates: lint + format + typecheck + unit test"
+        issue_type: "task"
+        priority: 1
+        labels: ["phase:00_bootstrap", "area:repo"]
+        description: "Add ruff/black + mypy/pyright + pytest + pre-commit hooks; wire into CI."
+        acceptance_criteria: |
+          - CI job fails on lint/type/test violations.
+      - key: EP00_T6
+        title: "Structured logging and artifact layout conventions"
+        issue_type: "task"
+        priority: 1
+        labels: ["phase:00_bootstrap", "area:repo"]
+        description: |
+          Implement JSONL logs with dataset_id/episode_id/stage timings.
+          Standardize output paths: out/{dataset_id}/{compiled,reports,indexes}.
+        acceptance_criteria: |
+          - Logs are machine-parseable (one JSON object per line).
+          - Artifact paths documented and stable.
+
+  # ------------------------------
+  # EPIC 01: SPEC / CONTRACT
+  # ------------------------------
+  - key: EP01
+    title: "EPIC: Spec, contracts, and milestones"
+    issue_type: "epic"
+    priority: 0
+    labels: ["proj:embodied_datakit", "phase:01_spec", "area:spec"]
+    deps:
+      - type: "blocks"
+        on: ["EP00"]
+    description: "Lock down the compiler contract, canonical fields, validation policy, and CLI."
+    acceptance_criteria: |
+      - A single spec directory defines MUST/SHOULD/MAY and non-goals.
+      - Golden path is defined and executable.
+    children:
+      - key: EP01_T1
+        title: "Upstream formats note (RLDS + LeRobot v3 + OXE deltas)"
+        issue_type: "task"
+        priority: 0
+        labels: ["phase:01_spec", "area:spec"]
+        description: "Write docs/spec/upstream_formats.md summarizing required invariants and interoperability constraints."
+        acceptance_criteria: |
+          - Document includes explicit MUST/SHOULD/MAY rules.
+      - key: EP01_T2
+        title: "Compiler contract (inputs, outputs, guarantees)"
+        issue_type: "task"
+        priority: 0
+        labels: ["phase:01_spec", "area:spec"]
+        description: "Define the intermediate representation (Episode/Step) and output artifacts (LeRobot v3 primary, RLDS export secondary)."
+        acceptance_criteria: |
+          - Contract includes required fields, error modes, and reproducibility semantics.
+      - key: EP01_T3
+        title: "CLI surface spec (edk ingest/validate/compile/index/slice/export/eval)"
+        issue_type: "task"
+        priority: 1
+        labels: ["phase:01_spec", "area:spec"]
+        description: "Write docs/spec/cli.md with subcommands, flags, and exit codes."
+        acceptance_criteria: |
+          - CLI spec covers all major workflows end-to-end.
+      - key: EP01_T4
+        title: "Provenance + versioning policy (dataset_id, build hash, schema version)"
+        issue_type: "task"
+        priority: 1
+        labels: ["phase:01_spec", "area:spec"]
+        description: "Define dataset identity and how transforms/config contribute to a deterministic build id."
+        acceptance_criteria: |
+          - A stable dataset_id computation is specified.
+      - key: EP01_T5
+        title: "Validation severity model and reporting format"
+        issue_type: "task"
+        priority: 1
+        labels: ["phase:01_spec", "area:spec"]
+        description: "Define ERROR/WARN/INFO policy and report artifacts (summary JSON + findings JSONL)."
+        acceptance_criteria: |
+          - Policy defines fail-fast vs quarantine modes.
+      - key: EP01_T6
+        title: "Golden path scenario and milestone plan"
+        issue_type: "task"
+        priority: 1
+        labels: ["phase:01_spec", "area:spec"]
+        description: "Pick one TFDS RLDS dataset for MVP; define compile → index → slice → smoke test sequence."
+        acceptance_criteria: |
+          - Golden path steps are enumerated and testable.
+
+  # ------------------------------
+  # EPIC 02: CANONICAL SCHEMA
+  # ------------------------------
+  - key: EP02
+    title: "EPIC: Canonical schema + typing (Episode/Step/DatasetSpec)"
+    issue_type: "epic"
+    priority: 0
+    labels: ["proj:embodied_datakit", "phase:02_schema", "area:schema"]
+    deps:
+      - type: "blocks"
+        on: ["EP01"]
+    description: "Implement internal schema aligned with RLDS semantics; keep it serialization-friendly."
+    acceptance_criteria: |
+      - Episode/Step round-trip to JSON-friendly structures.
+      - Schema versioning and compatibility checks exist.
+    children:
+      - key: EP02_T1
+        title: "Implement Step and Episode dataclasses"
+        issue_type: "task"
+        priority: 0
+        labels: ["phase:02_schema", "area:schema"]
+        description: "Create canonical Step (is_first/is_last/is_terminal, obs/action/reward/discount) and Episode containers."
+        acceptance_criteria: |
+          - Unit tests cover minimal valid episode and edge cases.
+      - key: EP02_T2
+        title: "DatasetSpec + modality registry"
+        issue_type: "task"
+        priority: 0
+        labels: ["phase:02_schema", "area:schema"]
+        description: "Define DatasetSpec: feature names, dtypes/shapes, camera registry, action semantics, fps/control rate."
+        acceptance_criteria: |
+          - Spec can be produced by adapters and consumed by writers/validators.
+      - key: EP02_T3
+        title: "Canonical key naming convention (flattening rules)"
+        issue_type: "task"
+        priority: 1
+        labels: ["phase:02_schema", "area:schema"]
+        description: "Document and implement dotted-key scheme for observations/actions for Parquet friendliness."
+        acceptance_criteria: |
+          - Flatten/unflatten helpers have property tests.
+      - key: EP02_T4
+        title: "Canonical action representation enum + metadata"
+        issue_type: "task"
+        priority: 1
+        labels: ["phase:02_schema", "area:schema"]
+        description: "Support ee_delta_7 / ee_abs_7 / joint_* variants; store coordinate frame notes in metadata."
+        acceptance_criteria: |
+          - Action spec is explicit and validated.
+      - key: EP02_T5
+        title: "TaskCatalog abstraction (task_text → task_id mapping)"
+        issue_type: "task"
+        priority: 1
+        labels: ["phase:02_schema", "area:schema"]
+        description: "Implement tasks.jsonl-style mapping for stable slicing and training."
+        acceptance_criteria: |
+          - Deterministic mapping with stable ordering.
+      - key: EP02_T6
+        title: "EpisodeIndexRecord schema (sliceable metadata contract)"
+        issue_type: "task"
+        priority: 1
+        labels: ["phase:02_schema", "area:schema"]
+        description: "Define the index table schema used for slicing: robot_id, task_id, episode length, camera set, action type, offsets."
+        acceptance_criteria: |
+          - Index schema is stable and versioned.
+      - key: EP02_T7
+        title: "Stats schema (normalization metadata) and schema versioning"
+        issue_type: "task"
+        priority: 2
+        labels: ["phase:02_schema", "area:schema"]
+        description: "Define stats.json (mean/std/min/max) + schema version field; implement compatibility checks."
+        acceptance_criteria: |
+          - Writer emits stats and version; readers validate.
+
+  # ------------------------------
+  # EPIC 03: PIPELINE / PLUGINS
+  # ------------------------------
+  - key: EP03
+    title: "EPIC: Compiler pipeline + plugin registry"
+    issue_type: "epic"
+    priority: 0
+    labels: ["proj:embodied_datakit", "phase:03_pipeline", "area:pipeline"]
+    deps:
+      - type: "blocks"
+        on: ["EP02"]
+    description: "Adapter → Transform → Validate → Write → Index orchestration with bounded memory."
+    acceptance_criteria: |
+      - Pipeline can stream episodes end-to-end.
+      - Plugins are discoverable and configurable.
+    children:
+      - key: EP03_T1
+        title: "Define Adapter/Transform/Validator/Writer interfaces"
+        issue_type: "task"
+        priority: 0
+        labels: ["phase:03_pipeline", "area:pipeline"]
+        description: "Create base classes/protocols with typed signatures and config injection."
+        acceptance_criteria: |
+          - Interfaces are stable and documented.
+      - key: EP03_T2
+        title: "Implement Compiler runner (streaming orchestration, counters, failure policy)"
+        issue_type: "task"
+        priority: 0
+        labels: ["phase:03_pipeline", "area:pipeline"]
+        description: "Implement compile loop with bounded buffering; integrate validation severity policy."
+        acceptance_criteria: |
+          - Can compile a synthetic dataset without OOM.
+      - key: EP03_T3
+        title: "Plugin registry and entry points"
+        issue_type: "task"
+        priority: 1
+        labels: ["phase:03_pipeline", "area:pipeline"]
+        description: "Implement a registry for adapters/transforms/writers; support selecting by name in config."
+        acceptance_criteria: |
+          - New plugin can be added without editing core code.
+      - key: EP03_T4
+        title: "Run manifest + reproducibility plumbing"
+        issue_type: "task"
+        priority: 1
+        labels: ["phase:03_pipeline", "area:pipeline"]
+        description: "Emit a build manifest with config hash, code version, and produced artifacts."
+        acceptance_criteria: |
+          - Manifest is sufficient to reproduce the build.
+
+  # ------------------------------
+  # EPIC 04: RLDS/TFDS INGEST (OXE path)
+  # ------------------------------
+  - key: EP04
+    title: "EPIC: RLDS/TFDS ingestion (incl. OXE-style datasets)"
+    issue_type: "epic"
+    priority: 0
+    labels: ["proj:embodied_datakit", "phase:04_rlds_ingest", "area:adapters"]
+    deps:
+      - type: "blocks"
+        on: ["EP03"]
+    description: "Load RLDS episode/steps datasets via TFDS by-name and builder-from-directory."
+    acceptance_criteria: |
+      - Can load 1 episode, convert to canonical Episode, and validate basic invariants.
+    children:
+      - key: EP04_T1
+        title: "TFDS builder_from_directory adapter"
+        issue_type: "task"
+        priority: 0
+        labels: ["phase:04_rlds_ingest", "area:adapters"]
+        description: "Implement adapter to load RLDS datasets stored as TFDS directories."
+        acceptance_criteria: |
+          - Can iterate episodes from a local TFDS directory.
+      - key: EP04_T2
+        title: "TFDS by-name adapter"
+        issue_type: "task"
+        priority: 1
+        labels: ["phase:04_rlds_ingest", "area:adapters"]
+        description: "Implement adapter to load installed TFDS datasets by name/split."
+        acceptance_criteria: |
+          - Split selection works (train/val/test or slice syntax).
+      - key: EP04_T3
+        title: "RLDS episode parsing to canonical Episode/Step"
+        issue_type: "task"
+        priority: 0
+        labels: ["phase:04_rlds_ingest", "area:adapters"]
+        description: "Parse RLDS episode dicts with nested steps; normalize to canonical schema."
+        acceptance_criteria: |
+          - Required RLDS fields mapped correctly in at least one dataset.
+      - key: EP04_T4
+        title: "Tensor conversion utilities (tf.Tensor → numpy; bytes → str)"
+        issue_type: "task"
+        priority: 1
+        labels: ["phase:04_rlds_ingest", "area:adapters"]
+        description: "Implement robust conversion utilities and unit tests."
+        acceptance_criteria: |
+          - Handles common dtypes and ragged-ish structures safely.
+      - key: EP04_T5
+        title: "Probe(): build DatasetSpec from TFDS features"
+        issue_type: "task"
+        priority: 1
+        labels: ["phase:04_rlds_ingest", "area:adapters"]
+        description: "Infer modalities (images/state/action) and populate DatasetSpec."
+        acceptance_criteria: |
+          - Spec includes camera names, shapes, and action dimensionality.
+      - key: EP04_T6
+        title: "Ingestion smoke tests (1 episode) + streaming-safety checks"
+        issue_type: "task"
+        priority: 1
+        labels: ["phase:04_rlds_ingest", "area:qa"]
+        description: "Add integration test that loads one episode, iterates steps, and checks non-empty outputs."
+        acceptance_criteria: |
+          - Test runs in CI on synthetic fixture (or gated by env var for real dataset).
+
+  # ------------------------------
+  # EPIC 06: TRANSFORMS (canonicalization)
+  # ------------------------------
+  - key: EP06
+    title: "EPIC: Canonicalization transforms (camera/action/time/task_text)"
+    issue_type: "epic"
+    priority: 1
+    labels: ["proj:embodied_datakit", "phase:06_transforms", "area:transforms"]
+    deps:
+      - type: "blocks"
+        on: ["EP02", "EP04"]
+    description: "Make heterogeneous datasets trainable via configurable transforms."
+    acceptance_criteria: |
+      - Per-dataset pipeline config drives camera selection, resizing, action mapping, timestamps, and key flattening.
+    children:
+      - key: EP06_T1
+        title: "Task text extraction + normalization"
+        issue_type: "task"
+        priority: 1
+        labels: ["phase:06_transforms", "area:transforms"]
+        description: "Guarantee task_text exists (decode bytes, normalize whitespace, optionally promote episode-level to step-level)."
+        acceptance_criteria: |
+          - No empty task_text after transform (unless explicitly allowed).
+      - key: EP06_T2
+        title: "Camera selection transform"
+        issue_type: "task"
+        priority: 1
+        labels: ["phase:06_transforms", "area:transforms"]
+        description: "Select canonical RGB camera by config; fallback rules; record selection in metadata."
+        acceptance_criteria: |
+          - Deterministic selection and audit trail.
+      - key: EP06_T3
+        title: "Image resize/standardize transform"
+        issue_type: "task"
+        priority: 2
+        labels: ["phase:06_transforms", "area:transforms"]
+        description: "Resize/crop, enforce channel order, store original shapes."
+        acceptance_criteria: |
+          - Output images have configured shape/dtype.
+      - key: EP06_T4
+        title: "Action mapping to canonical ee_7 representation"
+        issue_type: "task"
+        priority: 1
+        labels: ["phase:06_transforms", "area:transforms"]
+        description: "Map dataset action formats to canonical 7D; preserve original action in metadata or separate field."
+        acceptance_criteria: |
+          - Action vectors are consistent shape across datasets after transform.
+      - key: EP06_T5
+        title: "Timestamp canonicalization + optional resampling"
+        issue_type: "task"
+        priority: 2
+        labels: ["phase:06_transforms", "area:transforms"]
+        description: "Ensure monotonic timestamps exist; synthesize from control rate if missing; optional resample policy."
+        acceptance_criteria: |
+          - All steps have timestamp and non-decreasing order.
+      - key: EP06_T6
+        title: "Flatten nested dict keys to dotted columns"
+        issue_type: "task"
+        priority: 1
+        labels: ["phase:06_transforms", "area:transforms"]
+        description: "Implement flattening to stable column names for Parquet; keep reversible mapping."
+        acceptance_criteria: |
+          - Property test validates stable round-trip for allowed structures.
+      - key: EP06_T7
+        title: "Transform pipeline config loader (per-dataset)"
+        issue_type: "task"
+        priority: 1
+        labels: ["phase:06_transforms", "area:transforms"]
+        description: "YAML configs for pipelines; allow selecting transforms + parameters per dataset."
+        acceptance_criteria: |
+          - CLI can apply pipeline config without code edits.
+
+  # ------------------------------
+  # EPIC 07: VALIDATION
+  # ------------------------------
+  - key: EP07
+    title: "EPIC: Strict validation + reports"
+    issue_type: "epic"
+    priority: 0
+    labels: ["proj:embodied_datakit", "phase:07_validation", "area:validation"]
+    deps:
+      - type: "blocks"
+        on: ["EP02", "EP03"]
+    description: "Validators for structural/semantic/statistical correctness; report generation; fail-fast vs quarantine."
+    acceptance_criteria: |
+      - Validation produces JSONL findings + summary JSON.
+      - Fail-fast and quarantine modes implemented.
+    children:
+      - key: EP07_T1
+        title: "RLDS structural invariants validator"
+        issue_type: "task"
+        priority: 0
+        labels: ["phase:07_validation", "area:validation"]
+        description: "Validate is_first/is_last uniqueness and field consistency across steps."
+        acceptance_criteria: |
+          - Invalid episodes are detected deterministically.
+      - key: EP07_T2
+        title: "Schema/dtype/shape validator (against DatasetSpec)"
+        issue_type: "task"
+        priority: 0
+        labels: ["phase:07_validation", "area:validation"]
+        description: "Check dtypes/shapes for all required fields; emit actionable diagnostics."
+        acceptance_criteria: |
+          - Reports include field-level mismatch details.
+      - key: EP07_T3
+        title: "Image integrity + alignment validator"
+        issue_type: "task"
+        priority: 1
+        labels: ["phase:07_validation", "area:validation"]
+        description: "Validate image decodability, dtype, finite values, and per-step alignment."
+        acceptance_criteria: |
+          - Detects missing/corrupt frames.
+      - key: EP07_T4
+        title: "Action sanity validator (NaNs, quantiles, outliers)"
+        issue_type: "task"
+        priority: 1
+        labels: ["phase:07_validation", "area:validation"]
+        description: "Check NaNs/infs; compute quantile stats; flag implausible ranges; optional clip/quarantine."
+        acceptance_criteria: |
+          - Outlier report includes dimension-wise summaries.
+      - key: EP07_T5
+        title: "Timestamp monotonicity + control-rate validator"
+        issue_type: "task"
+        priority: 1
+        labels: ["phase:07_validation", "area:validation"]
+        description: "Detect non-monotonic timestamps; large gaps; control-rate drift beyond tolerance."
+        acceptance_criteria: |
+          - Violations surfaced as ERROR/WARN per policy.
+      - key: EP07_T6
+        title: "Validation reports + execution modes"
+        issue_type: "task"
+        priority: 1
+        labels: ["phase:07_validation", "area:validation"]
+        description: "Implement report writers and CLI modes: fail-fast vs quarantine partition."
+        acceptance_criteria: |
+          - Produces reports/validation_summary.json and reports/findings.jsonl.
+
+  # ------------------------------
+  # EPIC 08: WRITER (LeRobot v3 primary)
+  # ------------------------------
+  - key: EP08
+    title: "EPIC: Streaming writer (LeRobotDataset v3 layout)"
+    issue_type: "epic"
+    priority: 0
+    labels: ["proj:embodied_datakit", "phase:08_writer_lerobot_v3", "area:writer"]
+    deps:
+      - type: "blocks"
+        on: ["EP06", "EP07"]
+    description: "Write compiled datasets as Parquet + MP4 shards with relational metadata tables."
+    acceptance_criteria: |
+      - Writer emits meta/info.json, meta/tasks.jsonl, meta/stats.json, meta/episodes/*.parquet, parquet steps, mp4 shards.
+      - Round-trip read test passes.
+    children:
+      - key: EP08_T1
+        title: "LeRobot v3 layout + meta writers (info/tasks/stats)"
+        issue_type: "task"
+        priority: 0
+        labels: ["phase:08_writer_lerobot_v3", "area:writer"]
+        description: "Implement directory layout and metadata emission (info.json, tasks.jsonl, stats.json)."
+        acceptance_criteria: |
+          - Metadata files are present and schema-valid.
+      - key: EP08_T2
+        title: "Parquet steps writer + sharding policy"
+        issue_type: "task"
+        priority: 0
+        labels: ["phase:08_writer_lerobot_v3", "area:writer"]
+        description: "Write flattened step rows to Parquet; shard by rows/episodes; keep file count low."
+        acceptance_criteria: |
+          - Shards are readable via pyarrow scanning.
+      - key: EP08_T3
+        title: "Video concat + MP4 encoding pipeline"
+        issue_type: "task"
+        priority: 1
+        labels: ["phase:08_writer_lerobot_v3", "area:writer"]
+        description: "Concatenate frames across episodes per camera; encode MP4 shards; record offsets."
+        acceptance_criteria: |
+          - Offsets map episodes to correct frame ranges.
+      - key: EP08_T4
+        title: "Episodes metadata table (offsets + slice fields)"
+        issue_type: "task"
+        priority: 1
+        labels: ["phase:08_writer_lerobot_v3", "area:writer"]
+        description: "Write per-episode metadata parquet (lengths, task ids, offsets into parquet/video)."
+        acceptance_criteria: |
+          - Index reconstruction is possible from metadata.
+      - key: EP08_T5
+        title: "Finalize step (backfill offsets, checksums, seal manifest)"
+        issue_type: "task"
+        priority: 1
+        labels: ["phase:08_writer_lerobot_v3", "area:writer"]
+        description: "Finalize writer: verify offsets, compute checksums, write build manifest."
+        acceptance_criteria: |
+          - Writer finalize fails loudly on inconsistency.
+      - key: EP08_T6
+        title: "Round-trip integration test (write then read sanity)"
+        issue_type: "task"
+        priority: 1
+        labels: ["phase:08_writer_lerobot_v3", "area:qa"]
+        description: "Integration test: compile a tiny dataset; verify key files exist and sample rows/frames align."
+        acceptance_criteria: |
+          - Test passes deterministically in CI (synthetic fixture).
+
+  # ------------------------------
+  # EPIC 09: RLDS EXPORT (secondary)
+  # ------------------------------
+  - key: EP09
+    title: "EPIC: RLDS/TFDS export (secondary output)"
+    issue_type: "epic"
+    priority: 1
+    labels: ["proj:embodied_datakit", "phase:09_export_rlds", "area:export"]
+    deps:
+      - type: "blocks"
+        on: ["EP02", "EP07"]
+    description: "Export canonical Episodes to RLDS/TFDS-loadable directory with TFRecord shards."
+    acceptance_criteria: |
+      - Exported dataset is loadable via TFDS builder-from-directory.
+    children:
+      - key: EP09_T1
+        title: "RLDS export schema builder (TFDS features from DatasetSpec)"
+        issue_type: "task"
+        priority: 1
+        labels: ["phase:09_export_rlds", "area:export"]
+        description: "Create RLDS-compatible schema declarations for observations/actions/rewards/discounts/metadata."
+        acceptance_criteria: |
+          - Schema covers required fields and consistent typing.
+      - key: EP09_T2
+        title: "TFRecord shard writer (episodes/steps) + TFDS metadata"
+        issue_type: "task"
+        priority: 1
+        labels: ["phase:09_export_rlds", "area:export"]
+        description: "Write TFRecord shards and TFDS metadata to enable builder_from_directory loading."
+        acceptance_criteria: |
+          - `tfds.builder_from_directory(...).as_dataset(...)` can iterate episodes.
+      - key: EP09_T3
+        title: "Export load test + notes on JSONL filename compatibility"
+        issue_type: "task"
+        priority: 2
+        labels: ["phase:09_export_rlds", "area:qa"]
+        description: |
+          Add integration test that exports a tiny dataset and loads it back.
+          Also document Beads JSONL filename compatibility: issues.jsonl is the default in recent versions (changed from beads.jsonl). :contentReference[oaicite:10]{index=10}
+        acceptance_criteria: |
+          - Export round-trip test passes on fixture.
+
+  # ------------------------------
+  # EPIC 10: INDEX + SLICING
+  # ------------------------------
+  - key: EP10
+    title: "EPIC: Indexing + slicing (DuckDB/Polars over episode table)"
+    issue_type: "epic"
+    priority: 1
+    labels: ["proj:embodied_datakit", "phase:10_index_slice", "area:index"]
+    deps:
+      - type: "blocks"
+        on: ["EP08"]
+    description: "Build queryable episode index; materialize slices deterministically; emit mixture specs."
+    acceptance_criteria: |
+      - `edk index` builds episodes.parquet.
+      - `edk slice` produces a reproducible subset (copy or manifest view).
+    children:
+      - key: EP10_T1
+        title: "Index builder (episodes.parquet) from compiled outputs"
+        issue_type: "task"
+        priority: 1
+        labels: ["phase:10_index_slice", "area:index"]
+        description: "Build EpisodeIndexRecord parquet; include storage offsets for fast retrieval."
+        acceptance_criteria: |
+          - Index contains required slice fields and passes schema checks.
+      - key: EP10_T2
+        title: "Query engine + CLI filters"
+        issue_type: "task"
+        priority: 2
+        labels: ["phase:10_index_slice", "area:index"]
+        description: "Implement filtering by robot_id/task_id/task_text regex/len/camera_set/action type/invalid flag."
+        acceptance_criteria: |
+          - Queries are deterministic and fast on moderate scale.
+      - key: EP10_T3
+        title: "Slice materialization (copy mode and/or manifest view)"
+        issue_type: "task"
+        priority: 2
+        labels: ["phase:10_index_slice", "area:index"]
+        description: "Produce a new dataset from an index query; preserve provenance backpointer."
+        acceptance_criteria: |
+          - Slice build is reproducible from query + parent build id.
+      - key: EP10_T4
+        title: "Deterministic split assignment + mixture spec generator"
+        issue_type: "task"
+        priority: 2
+        labels: ["phase:10_index_slice", "area:index"]
+        description: "Hash-based splits; generate mixture YAML with dataset weights and filters."
+        acceptance_criteria: |
+          - Same inputs produce same split and mixture outputs.
+
+  # ------------------------------
+  # EPIC 12: RLBench eval harness
+  # ------------------------------
+  - key: EP12
+    title: "EPIC: RLBench-style evaluation harness"
+    issue_type: "epic"
+    priority: 1
+    labels: ["proj:embodied_datakit", "phase:12_eval_rlbench", "area:eval"]
+    deps:
+      - type: "blocks"
+        on: ["EP06"]     # needs canonical obs/action adapters
+    description: "Run sim evaluation with success-rate metrics; policy API and observation/action adapters."
+    acceptance_criteria: |
+      - Evaluator runs a configured task list and emits CSV+JSON summary.
+      - Optional video capture for debugging.
+    children:
+      - key: EP12_T1
+        title: "RLBench setup automation (headless) + protocol config"
+        issue_type: "task"
+        priority: 2
+        labels: ["phase:12_eval_rlbench", "area:eval"]
+        description: "Create setup docs/scripts and protocol YAML (tasks, episodes, seeds, horizons)."
+        acceptance_criteria: |
+          - Setup path is reproducible.
+      - key: EP12_T2
+        title: "Policy API + obs/action adapters"
+        issue_type: "task"
+        priority: 1
+        labels: ["phase:12_eval_rlbench", "area:eval"]
+        description: "Define policy inference interface and adapters to/from canonical schema."
+        acceptance_criteria: |
+          - Action adapter matches canonical action spec; obs adapter matches training keys.
+      - key: EP12_T3
+        title: "Evaluator runner + metrics aggregation + optional video recording"
+        issue_type: "task"
+        priority: 1
+        labels: ["phase:12_eval_rlbench", "area:eval"]
+        description: "Implement rollouts, success rate computation, per-task breakdown, and debug videos."
+        acceptance_criteria: |
+          - Produces eval/rlbench_results.csv and eval/rlbench_results.json.
+
+  # ------------------------------
+  # EPIC 14: TESTS + DOCS + RELEASE
+  # ------------------------------
+  - key: EP14
+    title: "EPIC: Tests, docs, and release checklist"
+    issue_type: "epic"
+    priority: 0
+    labels: ["proj:embodied_datakit", "phase:14_tests_release", "area:qa", "area:docs"]
+    deps:
+      - type: "blocks"
+        on: ["EP08", "EP09", "EP10", "EP12"]
+    description: "Hardening: fixtures, unit/integration tests, quickstarts, and packaging/release process."
+    acceptance_criteria: |
+      - CI has unit + integration coverage on fixtures.
+      - Docs include quickstart compile + quickstart export + guide to add adapter.
+    children:
+      - key: EP14_T1
+        title: "Synthetic RLDS fixture generator for CI"
+        issue_type: "task"
+        priority: 0
+        labels: ["phase:14_tests_release", "area:qa"]
+        description: "Create small deterministic RLDS-like fixture dataset for tests (no network dependency)."
+        acceptance_criteria: |
+          - Fixture generation is deterministic and fast.
+      - key: EP14_T2
+        title: "Unit tests for validators + property tests for flattening"
+        issue_type: "task"
+        priority: 0
+        labels: ["phase:14_tests_release", "area:qa"]
+        description: "Cover every validator rule with minimal failing episodes; property-test flatten/unflatten."
+        acceptance_criteria: |
+          - Major invariants have explicit tests.
+      - key: EP14_T3
+        title: "Integration tests: compile→write→index→slice + export round-trip"
+        issue_type: "task"
+        priority: 0
+        labels: ["phase:14_tests_release", "area:qa"]
+        description: "Add end-to-end tests on fixtures for the main pipelines."
+        acceptance_criteria: |
+          - Tests run in CI and validate file outputs and basic alignment.
+      - key: EP14_T4
+        title: "Docs: Quickstart compile + Quickstart export + adding adapter"
+        issue_type: "task"
+        priority: 1
+        labels: ["phase:14_tests_release", "area:docs"]
+        description: "Write minimal but complete quickstarts and extension guide."
+        acceptance_criteria: |
+          - Docs enable a new user to compile and export from a fixture dataset.
+      - key: EP14_T5
+        title: "Release checklist + dataset card generator"
+        issue_type: "task"
+        priority: 2
+        labels: ["phase:14_tests_release", "area:docs"]
+        description: "Add release checklist and a dataset card generator for publishing compiled datasets."
+        acceptance_criteria: |
+          - Checklist and generator are runnable and versioned.

@@ -1,0 +1,3 @@
+json: true
+no-daemon: true
+sync-branch: beads-sync

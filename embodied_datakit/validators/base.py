@@ -82,10 +82,14 @@ class Validator(Protocol):
 class BaseValidator(ABC):
     """Abstract base class for validators."""
 
+    def __init__(self, name: str | None = None) -> None:
+        """Initialize validator with optional name."""
+        self._name = name or self.__class__.__name__
+
     @property
     def name(self) -> str:
-        """Validator name (defaults to class name)."""
-        return self.__class__.__name__
+        """Validator name."""
+        return self._name
 
     @abstractmethod
     def validate_episode(self, episode: Episode, spec: DatasetSpec) -> list[Finding]:
