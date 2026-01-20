@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use this software in research, please cite it as below."
+title: "EmbodiedDataKit"
+authors:
+  - family-names: "Bharadwaj"
+    given-names: "Varun"
+    orcid: ""
+repository-code: "https://github.com/waycodes/embodied-agent"
+license: "Proprietary"
+version: "0.1.0"
+date-released: "2026-01-20"
+abstract: "A dataset compiler for heterogeneous robot trajectories with strict validation and streamable output."
+keywords:
+  - robotics
+  - dataset
+  - RLDS
+  - LeRobot
+  - embodied-ai

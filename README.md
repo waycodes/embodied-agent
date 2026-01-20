@@ -55,4 +55,23 @@ See [docs/](docs/) for detailed documentation:
 
 ## License
 
-Apache 2.0
+**Proprietary – Research/Portfolio Use Only**
+
+This software is provided under a restrictive proprietary license:
+- ❌ No commercial or professional use
+- ❌ No redistribution or derivative works
+- ✅ Non-commercial research with required citation
+- ✅ Personal evaluation
+
+If you use this software in academic research, you **must** cite it:
+
+```bibtex
+@software{bharadwaj2026embodieddatakit,
+  author = {Bharadwaj, Varun},
+  title = {EmbodiedDataKit},
+  year = {2026},
+  url = {https://github.com/waycodes/embodied-agent}
+}
+```
+
+See [LICENSE](LICENSE) and [CITATION.cff](CITATION.cff) for full terms.
