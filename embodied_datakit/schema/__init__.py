@@ -1,5 +1,6 @@
 """Schema subpackage for EmbodiedDataKit."""
 
+from embodied_datakit.schema.action import ActionMetadata, ActionType
 from embodied_datakit.schema.episode import Episode
 from embodied_datakit.schema.index import EpisodeIndexRecord
 from embodied_datakit.schema.keys import (
@@ -27,6 +28,8 @@ __all__ = [
     "EpisodeIndexRecord",
     "FeatureStats",
     "DatasetStats",
+    "ActionType",
+    "ActionMetadata",
     "KEY_SEP",
     "flatten_dict",
     "unflatten_dict",
