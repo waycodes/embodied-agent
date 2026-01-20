@@ -7,6 +7,10 @@ from embodied_datakit.validators.base import (
     ValidationReport,
     Validator,
 )
+from embodied_datakit.validators.image import (
+    ImageAlignmentValidator,
+    ImageIntegrityValidator,
+)
 from embodied_datakit.validators.structural import (
     ActionSanityValidator,
     EpisodeLengthValidator,
@@ -26,4 +30,6 @@ __all__ = [
     "TimestampValidator",
     "ActionSanityValidator",
     "SchemaValidator",
+    "ImageIntegrityValidator",
+    "ImageAlignmentValidator",
 ]
