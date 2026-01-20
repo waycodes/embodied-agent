@@ -7,6 +7,7 @@ from embodied_datakit.transforms.action import (
 )
 from embodied_datakit.transforms.base import BaseTransform, Transform, TransformChain
 from embodied_datakit.transforms.camera import ResizeImagesTransform, SelectCameraTransform
+from embodied_datakit.transforms.image import ImageStandardizeTransform
 from embodied_datakit.transforms.pipeline import (
     TRANSFORM_REGISTRY,
     build_pipeline_from_config,
@@ -22,6 +23,7 @@ __all__ = [
     "TransformChain",
     "SelectCameraTransform",
     "ResizeImagesTransform",
+    "ImageStandardizeTransform",
     "NormalizeActionsTransform",
     "PadActionTransform",
     "MapActionSpaceTransform",
