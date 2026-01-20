@@ -7,6 +7,7 @@ from embodied_datakit.transforms.action import (
 )
 from embodied_datakit.transforms.base import BaseTransform, Transform, TransformChain
 from embodied_datakit.transforms.camera import ResizeImagesTransform, SelectCameraTransform
+from embodied_datakit.transforms.task import TaskTextTransform, normalize_task_text
 
 __all__ = [
     "Transform",
@@ -17,4 +18,6 @@ __all__ = [
     "NormalizeActionsTransform",
     "PadActionTransform",
     "MapActionSpaceTransform",
+    "TaskTextTransform",
+    "normalize_task_text",
 ]
