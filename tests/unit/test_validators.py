@@ -61,7 +61,7 @@ class TestRLDSInvariantValidator:
             Step(is_first=False, is_last=False, observation={}, action=np.zeros(7)),
             Step(is_first=False, is_last=True, observation={}, action=None),
         ]
-        episode = Episode(episode_id="bad", dataset_id="test", steps=steps)
+        episode = Episode(episode_id="bad", dataset_id="test", steps=steps, invalid=True)
 
         validator = RLDSInvariantValidator()
         findings = validator.validate_episode(episode, spec)
@@ -76,7 +76,7 @@ class TestRLDSInvariantValidator:
             Step(is_first=True, is_last=False, observation={}, action=np.zeros(7)),
             Step(is_first=False, is_last=False, observation={}, action=np.zeros(7)),
         ]
-        episode = Episode(episode_id="bad", dataset_id="test", steps=steps)
+        episode = Episode(episode_id="bad", dataset_id="test", steps=steps, invalid=True)
 
         validator = RLDSInvariantValidator()
         findings = validator.validate_episode(episode, spec)

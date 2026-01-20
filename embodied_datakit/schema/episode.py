@@ -35,6 +35,10 @@ class Episode:
         if not self.steps:
             return  # Empty episode allowed for validation purposes
 
+        # Skip validation if invalid flag is set (for testing validators)
+        if self.invalid:
+            return
+
         # Validate RLDS invariants
         if not self.steps[0].is_first:
             raise ValueError("First step must have is_first=True")

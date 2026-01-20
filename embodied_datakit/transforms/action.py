@@ -66,9 +66,8 @@ class NormalizeActionsTransform(BaseTransform):
             steps=new_steps,
             task_id=episode.task_id,
             task_text=episode.task_text,
-            split=episode.split,
-            provenance=episode.provenance,
             invalid=episode.invalid,
+            episode_metadata=episode.episode_metadata,
         )
 
     def _compute_bounds(self, episode: Episode) -> None:
@@ -114,7 +113,7 @@ class NormalizeActionsTransform(BaseTransform):
             reward=step.reward,
             discount=step.discount,
             timestamp=step.timestamp,
-            frame_index=step.frame_index,
+            step_metadata=step.step_metadata,
         )
 
 
@@ -149,9 +148,8 @@ class PadActionTransform(BaseTransform):
             steps=new_steps,
             task_id=episode.task_id,
             task_text=episode.task_text,
-            split=episode.split,
-            provenance=episode.provenance,
             invalid=episode.invalid,
+            episode_metadata=episode.episode_metadata,
         )
 
     def _transform_step(self, step: Step) -> Step:
@@ -180,7 +178,7 @@ class PadActionTransform(BaseTransform):
             reward=step.reward,
             discount=step.discount,
             timestamp=step.timestamp,
-            frame_index=step.frame_index,
+            step_metadata=step.step_metadata,
         )
 
 
@@ -223,9 +221,8 @@ class MapActionSpaceTransform(BaseTransform):
             steps=new_steps,
             task_id=episode.task_id,
             task_text=episode.task_text,
-            split=episode.split,
-            provenance=episode.provenance,
             invalid=episode.invalid,
+            episode_metadata=episode.episode_metadata,
         )
 
     def _transform_step(self, step: Step) -> Step:
@@ -256,5 +253,5 @@ class MapActionSpaceTransform(BaseTransform):
             reward=step.reward,
             discount=step.discount,
             timestamp=step.timestamp,
-            frame_index=step.frame_index,
+            step_metadata=step.step_metadata,
         )

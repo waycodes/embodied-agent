@@ -37,10 +37,14 @@ class Transform(Protocol):
 class BaseTransform(ABC):
     """Abstract base class for transforms."""
 
+    def __init__(self, name: str | None = None) -> None:
+        """Initialize transform with optional name."""
+        self._name = name or self.__class__.__name__
+
     @property
     def name(self) -> str:
-        """Transform name (defaults to class name)."""
-        return self.__class__.__name__
+        """Transform name."""
+        return self._name
 
     @abstractmethod
     def transform_episode(self, episode: Episode, spec: DatasetSpec) -> Episode:

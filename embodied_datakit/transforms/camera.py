@@ -71,9 +71,8 @@ class SelectCameraTransform(BaseTransform):
             steps=new_steps,
             task_id=episode.task_id,
             task_text=episode.task_text,
-            split=episode.split,
-            provenance=episode.provenance,
             invalid=episode.invalid,
+            episode_metadata=episode.episode_metadata,
         )
 
     def _find_camera(self, episode: Episode, spec: DatasetSpec) -> str | None:
@@ -122,7 +121,7 @@ class SelectCameraTransform(BaseTransform):
             reward=step.reward,
             discount=step.discount,
             timestamp=step.timestamp,
-            frame_index=step.frame_index,
+            step_metadata=step.step_metadata,
         )
 
 
@@ -160,9 +159,8 @@ class ResizeImagesTransform(BaseTransform):
             steps=new_steps,
             task_id=episode.task_id,
             task_text=episode.task_text,
-            split=episode.split,
-            provenance=episode.provenance,
             invalid=episode.invalid,
+            episode_metadata=episode.episode_metadata,
         )
 
     def _transform_step(self, step: Step) -> Step:
@@ -186,7 +184,7 @@ class ResizeImagesTransform(BaseTransform):
             reward=step.reward,
             discount=step.discount,
             timestamp=step.timestamp,
-            frame_index=step.frame_index,
+            step_metadata=step.step_metadata,
         )
 
     def _should_resize(self, key: str, value: Any) -> bool:
