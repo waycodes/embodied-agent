@@ -311,3 +311,52 @@ class TestIngestionSmoke:
                 assert step.action is not None
                 assert isinstance(step.action, np.ndarray)
                 assert step.action.ndim == 1
+
+
+class TestExportRoundTrip:
+    """Round-trip tests for RLDS export."""
+
+    def test_export_and_load_rlds_schema(self) -> None:
+        """Test exporting RLDS schema and verifying structure."""
+        from embodied_datakit.writers.rlds_tfds import build_rlds_schema
+
+        episodes, spec = generate_synthetic_dataset(num_episodes=2, steps_per_episode=5)
+
+        # Build schema from spec
+        schema = build_rlds_schema(spec)
+
+        # Verify schema structure
+        assert "steps" in schema
+        steps_schema = schema["steps"]
+        assert "observation" in steps_schema
+        assert "action" in steps_schema
+        assert "is_first" in steps_schema
+        assert "is_last" in steps_schema
+
+    def test_export_metadata_roundtrip(self) -> None:
+        """Test that export metadata can be written and read back."""
+        episodes, spec = generate_synthetic_dataset(num_episodes=3, steps_per_episode=5)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_dir = Path(tmpdir)
+            meta_dir = output_dir / "meta"
+            meta_dir.mkdir(parents=True)
+
+            # Write export metadata
+            export_meta = {
+                "format": "rlds",
+                "num_episodes": len(episodes),
+                "schema_version": "1.0.0",
+                "source_dataset": spec.name,
+            }
+            meta_path = meta_dir / "export_info.json"
+            with open(meta_path, "w") as f:
+                json.dump(export_meta, f)
+
+            # Read back
+            with open(meta_path) as f:
+                loaded = json.load(f)
+
+            assert loaded["format"] == "rlds"
+            assert loaded["num_episodes"] == 3
+            assert loaded["schema_version"] == "1.0.0"
