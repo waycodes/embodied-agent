@@ -294,3 +294,160 @@ class ActionSanityValidator(BaseValidator):
                 break
 
         return findings
+
+
+class SchemaValidator(BaseValidator):
+    """Validate episode data against DatasetSpec schema.
+
+    Checks:
+    - Required observation keys are present
+    - Dtypes match expected types
+    - Shapes match expected shapes
+    - Action dimensions are consistent
+    """
+
+    def __init__(self, strict: bool = False) -> None:
+        """Initialize schema validator.
+
+        Args:
+            strict: If True, treat shape mismatches as errors instead of warnings.
+        """
+        super().__init__("schema")
+        self.strict = strict
+
+    def validate_episode(
+        self, episode: Episode, spec: DatasetSpec
+    ) -> list[Finding]:
+        """Validate episode against schema."""
+        findings: list[Finding] = []
+
+        if not episode.steps:
+            return findings
+
+        # Check first step for schema compliance
+        first_step = episode.steps[0]
+
+        # Validate observation keys
+        if spec.observation_schema:
+            findings.extend(self._validate_observations(first_step, spec, episode.episode_id))
+
+        # Validate action schema
+        if spec.action_schema:
+            findings.extend(self._validate_actions(episode, spec))
+
+        return findings
+
+    def _validate_observations(
+        self, step: "Step", spec: DatasetSpec, episode_id: str
+    ) -> list[Finding]:
+        """Validate observation keys and types."""
+        from embodied_datakit.schema.step import Step
+
+        findings: list[Finding] = []
+
+        # Check for missing required keys
+        for key, feat_spec in spec.observation_schema.items():
+            if key not in step.observation:
+                findings.append(Finding(
+                    code=self.name,
+                    severity=Severity.ERROR,
+                    message=f"Missing required observation key: {key}",
+                    episode_id=episode_id,
+                    field=key,
+                ))
+                continue
+
+            value = step.observation[key]
+
+            # Check dtype
+            if isinstance(value, np.ndarray):
+                actual_dtype = value.dtype.name
+                expected_dtype = feat_spec.dtype
+
+                if actual_dtype != expected_dtype:
+                    # Allow compatible dtypes
+                    if not self._dtypes_compatible(actual_dtype, expected_dtype):
+                        findings.append(Finding(
+                            code=self.name,
+                            severity=Severity.WARN,
+                            message=f"Dtype mismatch for {key}: expected {expected_dtype}, got {actual_dtype}",
+                            episode_id=episode_id,
+                            field=key,
+                        ))
+
+                # Check shape
+                actual_shape = value.shape
+                expected_shape = feat_spec.shape
+
+                if actual_shape != expected_shape:
+                    severity = Severity.ERROR if self.strict else Severity.WARN
+                    findings.append(Finding(
+                        code=self.name,
+                        severity=severity,
+                        message=f"Shape mismatch for {key}: expected {expected_shape}, got {actual_shape}",
+                        episode_id=episode_id,
+                        field=key,
+                    ))
+
+        return findings
+
+    def _validate_actions(
+        self, episode: Episode, spec: DatasetSpec
+    ) -> list[Finding]:
+        """Validate action dimensions."""
+        findings: list[Finding] = []
+
+        expected_shape = spec.action_schema.shape
+        expected_dtype = spec.action_schema.dtype
+
+        for i, step in enumerate(episode.steps):
+            if step.action is None:
+                continue
+
+            # Check shape
+            actual_shape = step.action.shape
+            if actual_shape != expected_shape:
+                findings.append(Finding(
+                    code=self.name,
+                    severity=Severity.ERROR,
+                    message=f"Action shape mismatch: expected {expected_shape}, got {actual_shape}",
+                    episode_id=episode.episode_id,
+                    step_index=i,
+                    field="action",
+                ))
+                break  # Only report once per episode
+
+            # Check dtype
+            actual_dtype = step.action.dtype.name
+            if actual_dtype != expected_dtype:
+                if not self._dtypes_compatible(actual_dtype, expected_dtype):
+                    findings.append(Finding(
+                        code=self.name,
+                        severity=Severity.WARN,
+                        message=f"Action dtype mismatch: expected {expected_dtype}, got {actual_dtype}",
+                        episode_id=episode.episode_id,
+                        step_index=i,
+                        field="action",
+                    ))
+                    break
+
+        return findings
+
+    def _dtypes_compatible(self, actual: str, expected: str) -> bool:
+        """Check if dtypes are compatible."""
+        # Allow float32/float64 interchangeability
+        float_types = {"float32", "float64"}
+        if actual in float_types and expected in float_types:
+            return True
+
+        # Allow int types interchangeability
+        int_types = {"int32", "int64", "int16", "int8"}
+        if actual in int_types and expected in int_types:
+            return True
+
+        # Allow uint types interchangeability
+        uint_types = {"uint8", "uint16", "uint32", "uint64"}
+        if actual in uint_types and expected in uint_types:
+            return True
+
+        return actual == expected
