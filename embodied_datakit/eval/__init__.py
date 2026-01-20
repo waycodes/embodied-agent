@@ -7,6 +7,13 @@ from embodied_datakit.eval.policy import (
     Policy,
     RandomPolicy,
 )
+from embodied_datakit.eval.runner import (
+    Environment,
+    EpisodeResult,
+    EvalConfig,
+    Evaluator,
+    TaskMetrics,
+)
 
 __all__ = [
     "Policy",
@@ -14,4 +21,9 @@ __all__ = [
     "RandomPolicy",
     "ObservationAdapter",
     "ActionAdapter",
+    "Environment",
+    "EpisodeResult",
+    "TaskMetrics",
+    "EvalConfig",
+    "Evaluator",
 ]
