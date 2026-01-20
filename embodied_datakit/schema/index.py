@@ -7,6 +7,9 @@ from typing import Any
 
 import pyarrow as pa
 
+# Schema version for compatibility tracking
+INDEX_SCHEMA_VERSION = "1.0.0"
+
 
 @dataclass
 class EpisodeIndexRecord:
@@ -31,6 +34,7 @@ class EpisodeIndexRecord:
         parquet_row_start: Starting row in Parquet.
         parquet_row_end: Ending row in Parquet.
         video_offsets: JSON string of camera -> (file, start_frame, num_frames).
+        schema_version: Index schema version for compatibility.
     """
 
     episode_id: str
@@ -51,6 +55,7 @@ class EpisodeIndexRecord:
     parquet_row_start: int = 0
     parquet_row_end: int = 0
     video_offsets: str = "{}"
+    schema_version: str = INDEX_SCHEMA_VERSION
     extra: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -74,6 +79,7 @@ class EpisodeIndexRecord:
             "parquet_row_start": self.parquet_row_start,
             "parquet_row_end": self.parquet_row_end,
             "video_offsets": self.video_offsets,
+            "schema_version": self.schema_version,
         }
 
     @classmethod
@@ -98,6 +104,7 @@ class EpisodeIndexRecord:
             parquet_row_start=data.get("parquet_row_start", 0),
             parquet_row_end=data.get("parquet_row_end", 0),
             video_offsets=data.get("video_offsets", "{}"),
+            schema_version=data.get("schema_version", INDEX_SCHEMA_VERSION),
         )
 
 
@@ -122,4 +129,5 @@ def get_index_schema() -> pa.Schema:
         pa.field("parquet_row_start", pa.int64()),
         pa.field("parquet_row_end", pa.int64()),
         pa.field("video_offsets", pa.string()),
+        pa.field("schema_version", pa.string()),
     ])
