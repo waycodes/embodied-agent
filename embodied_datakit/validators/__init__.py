@@ -11,6 +11,13 @@ from embodied_datakit.validators.image import (
     ImageAlignmentValidator,
     ImageIntegrityValidator,
 )
+from embodied_datakit.validators.reports import (
+    ExecutionMode,
+    ReportWriter,
+    ValidationError,
+    ValidationResult,
+    ValidationRunner,
+)
 from embodied_datakit.validators.structural import (
     ActionSanityValidator,
     EpisodeLengthValidator,
@@ -32,4 +39,9 @@ __all__ = [
     "SchemaValidator",
     "ImageIntegrityValidator",
     "ImageAlignmentValidator",
+    "ExecutionMode",
+    "ValidationRunner",
+    "ValidationResult",
+    "ValidationError",
+    "ReportWriter",
 ]
