@@ -325,9 +325,11 @@ class TestExportRoundTrip:
         # Build schema from spec
         schema = build_rlds_schema(spec)
 
-        # Verify schema structure
-        assert "steps" in schema
-        steps_schema = schema["steps"]
+        # Verify schema structure (nested under 'episode')
+        assert "episode" in schema
+        episode_schema = schema["episode"]
+        assert "steps" in episode_schema
+        steps_schema = episode_schema["steps"]
         assert "observation" in steps_schema
         assert "action" in steps_schema
         assert "is_first" in steps_schema
@@ -347,7 +349,7 @@ class TestExportRoundTrip:
                 "format": "rlds",
                 "num_episodes": len(episodes),
                 "schema_version": "1.0.0",
-                "source_dataset": spec.name,
+                "source_dataset": spec.dataset_id,
             }
             meta_path = meta_dir / "export_info.json"
             with open(meta_path, "w") as f:
