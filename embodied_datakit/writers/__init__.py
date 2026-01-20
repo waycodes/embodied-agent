@@ -2,6 +2,7 @@
 
 from embodied_datakit.writers.base import BaseWriter, Writer
 from embodied_datakit.writers.episodes import EpisodesTableWriter
+from embodied_datakit.writers.finalize import DatasetFinalizer, compute_file_checksum
 from embodied_datakit.writers.lerobot_v3 import LeRobotV3Writer
 from embodied_datakit.writers.video import VideoEncoder, VideoOffset, VideoShardWriter
 
@@ -13,4 +14,6 @@ __all__ = [
     "VideoOffset",
     "VideoShardWriter",
     "EpisodesTableWriter",
+    "DatasetFinalizer",
+    "compute_file_checksum",
 ]
